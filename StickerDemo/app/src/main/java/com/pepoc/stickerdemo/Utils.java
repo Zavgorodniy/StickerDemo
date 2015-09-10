@@ -17,7 +17,7 @@ public class Utils {
             return point;
         }
         WindowManager wm = ((Activity)context).getWindowManager();
-        Point point = new Point();
+        point = new Point();
         wm.getDefaultDisplay().getSize(point);
         return point;
     }
