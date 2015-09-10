@@ -5,4 +5,4 @@
             2、对于点击边界的判断
             
             
-            ![](https://github.com/pepoc/ImageProcessing/blob/master/2015-09-10%2016:32:35%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE.png)  
+            ![](https://github.com/guodongxiaren/ImageCache/raw/master/Logo/jianxin.jpg)  
