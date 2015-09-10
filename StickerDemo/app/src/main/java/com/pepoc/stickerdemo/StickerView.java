@@ -19,6 +19,9 @@ import java.util.List;
  */
 public class StickerView extends View {
 
+    /**
+     * 最大放大倍数
+     */
     public static final float MAX_SCALE_SIZE = 5.0f;
     public static final float MIN_SCALE_SIZE = 0.5f;
 
@@ -35,6 +38,9 @@ public class StickerView extends View {
 //    private Sticker currentSticker;
     private List<Sticker> stickers = new ArrayList<Sticker>();
 
+    /**
+     * 焦点贴纸索引
+     */
     private int focusStickerPosition = -1;
 
     public StickerView(Context context) {
@@ -74,12 +80,6 @@ public class StickerView extends View {
     }
 
     @Override
-    public void setFocusable(boolean focusable) {
-        super.setFocusable(focusable);
-        postInvalidate();
-    }
-
-    @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
@@ -105,6 +105,12 @@ public class StickerView extends View {
 
     }
 
+    /**
+     * 是否在控制点区域
+     * @param x
+     * @param y
+     * @return
+     */
     private boolean isInController(float x, float y) {
         int position = 4;
         float rx = stickers.get(focusStickerPosition).getMapPointsDst()[position];
@@ -120,6 +126,12 @@ public class StickerView extends View {
 
     }
 
+    /**
+     * 是否在删除点区域
+     * @param x
+     * @param y
+     * @return
+     */
     private boolean isInDelete(float x, float y) {
         int position = 0;
         float rx = stickers.get(focusStickerPosition).getMapPointsDst()[position];
@@ -226,6 +238,9 @@ public class StickerView extends View {
         return true;
     }
 
+    /**
+     * 删除所有贴纸
+     */
     private void doDeleteSticker() {
         stickers.remove(focusStickerPosition);
         focusStickerPosition = stickers.size() - 1;
@@ -244,7 +259,7 @@ public class StickerView extends View {
 
 
     private float caculateLength(float x, float y) {
-        return (float)lineSpace(x, y, stickers.get(focusStickerPosition).getMapPointsDst()[8], stickers.get(focusStickerPosition).getMapPointsDst()[9]);
+        return (float)Utils.lineSpace(x, y, stickers.get(focusStickerPosition).getMapPointsDst()[8], stickers.get(focusStickerPosition).getMapPointsDst()[9]);
     }
 
 
@@ -261,10 +276,12 @@ public class StickerView extends View {
         return (float) Math.toDegrees(radians);
     }
 
-    public interface OnStickerDeleteListener {
-        void onDelete();
-    }
-
+    /**
+     * 是否点击在贴纸区域
+     * @param x
+     * @param y
+     * @return
+     */
     private boolean isFocusSticker(double x, double y) {
         for (int i = stickers.size() - 1; i >= 0; i--) {
             Sticker sticker = stickers.get(i);
@@ -285,14 +302,14 @@ public class StickerView extends View {
      */
     private boolean isInContent(double x, double y, Sticker currentSticker) {
         long startTime = System.currentTimeMillis();
-
-        PointD pointF_1 = getMidpointCoordinate(currentSticker.getMapPointsDst()[0], currentSticker.getMapPointsDst()[1], currentSticker.getMapPointsDst()[2], currentSticker.getMapPointsDst()[3]);
-        double a1 = lineSpace(currentSticker.getMapPointsDst()[8], currentSticker.getMapPointsDst()[9], pointF_1.getX(), pointF_1.getY());
-        double b1 = lineSpace(currentSticker.getMapPointsDst()[8], currentSticker.getMapPointsDst()[9], x, y);
+        float[] pointsDst = currentSticker.getMapPointsDst();
+        PointD pointF_1 = Utils.getMidpointCoordinate(pointsDst[0], pointsDst[1], pointsDst[2], pointsDst[3]);
+        double a1 = Utils.lineSpace(pointsDst[8], pointsDst[9], pointF_1.getX(), pointF_1.getY());
+        double b1 = Utils.lineSpace(pointsDst[8], pointsDst[9], x, y);
         if (b1 <= a1) {
             return true;
         }
-        double c1 = lineSpace(pointF_1.getX(), pointF_1.getY(), x, y);
+        double c1 = Utils.lineSpace(pointF_1.getX(), pointF_1.getY(), x, y);
         double p1 = (a1 + b1 + c1) / 2;
         double s1 = Math.sqrt(p1 * (p1 - a1) * (p1 - b1) * (p1 - c1));
         double d1 = 2 * s1 / a1;
@@ -300,10 +317,10 @@ public class StickerView extends View {
             return false;
         }
 
-        PointD pointF_2 = getMidpointCoordinate(currentSticker.getMapPointsDst()[2], currentSticker.getMapPointsDst()[3], currentSticker.getMapPointsDst()[4], currentSticker.getMapPointsDst()[5]);
+        PointD pointF_2 = Utils.getMidpointCoordinate(pointsDst[2], pointsDst[3], pointsDst[4], pointsDst[5]);
         double a2 = a1;
         double b2 = b1;
-        double c2 = lineSpace(pointF_2.getX(), pointF_2.getY(), x, y);
+        double c2 = Utils.lineSpace(pointF_2.getX(), pointF_2.getY(), x, y);
         double p2 = (a2 + b2 + c2) / 2;
         double temp = p2 * (p2 - a2) * (p2 - b2) * (p2 - c2);
         double s2 = Math.sqrt(temp);
@@ -319,37 +336,6 @@ public class StickerView extends View {
         }
 
         return false;
-    }
-
-    /**
-     * 获取线段中点坐标
-     * @param x1
-     * @param y1
-     * @param x2
-     * @param y2
-     * @return
-     */
-    private PointD getMidpointCoordinate(double x1, double y1, double x2, double y2) {
-        PointD midpoint = new PointD();
-        midpoint.set((x1 + x2) / 2, (y1 + y2) / 2);
-        return midpoint;
-    }
-
-    /**
-     * 计算两点之间的距离
-     * @param x1
-     * @param y1
-     * @param x2
-     * @param y2
-     * @return
-     */
-    private double lineSpace(double x1, double y1, double x2, double y2) {
-        double lineLength = 0;
-        double x, y;
-        x = x1 - x2;
-        y = y1 - y2;
-        lineLength = Math.sqrt(x * x + y * y);
-        return lineLength;
     }
 
     public void saveBitmapToFile() {
@@ -368,6 +354,10 @@ public class StickerView extends View {
         invalidate();
     }
 
+    /**
+     * 设置焦点贴纸
+     * @param position
+     */
     private void setFocusSticker(int position) {
         int focusPosition = stickers.size() - 1;
         for (int i = 0; i < stickers.size(); i++) {
