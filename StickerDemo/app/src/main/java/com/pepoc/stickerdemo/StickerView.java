@@ -10,18 +10,18 @@ import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 
+import com.pepoc.stickerdemo.bitmapsaver.BitmapSaver;
+import com.pepoc.stickerdemo.bitmapsaver.FileBitmapSaver;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-
-/**
- * Created by Yangchen on 2015/9/7.
- */
 public class StickerView extends View {
 
-    /**
-     * 最大放大倍数
-     */
     public static final float MAX_SCALE_SIZE = 5.0f;
     public static final float MIN_SCALE_SIZE = 0.5f;
 
@@ -35,12 +35,8 @@ public class StickerView extends View {
 
     private boolean mInDelete = false;
 
-//    private Sticker currentSticker;
     private List<Sticker> stickers = new ArrayList<Sticker>();
 
-    /**
-     * 焦点贴纸索引
-     */
     private int focusStickerPosition = -1;
 
     public StickerView(Context context) {
@@ -57,7 +53,6 @@ public class StickerView extends View {
     }
 
     private void init() {
-
         mControllerBitmap = BitmapFactory.decodeResource(getResources(), R.mipmap.ic_sticker_control);
         mControllerWidth = mControllerBitmap.getWidth();
         mControllerHeight = mControllerBitmap.getHeight();
@@ -65,7 +60,6 @@ public class StickerView extends View {
         mDeleteBitmap = BitmapFactory.decodeResource(getResources(), R.mipmap.ic_sticker_delete);
         mDeleteWidth = mDeleteBitmap.getWidth();
         mDeleteHeight = mDeleteBitmap.getHeight();
-
     }
 
     public void setWaterMark(Bitmap bitmap, Bitmap bgBitmap) {
@@ -76,13 +70,11 @@ public class StickerView extends View {
         focusStickerPosition = stickers.size() - 1;
         setFocusSticker(focusStickerPosition);
         postInvalidate();
-
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-
         canvas.drawBitmap(bgBitmap, 0, 0, null);
 
         if (stickers.size() <= 0) {
@@ -102,15 +94,8 @@ public class StickerView extends View {
                 canvas.drawBitmap(mDeleteBitmap, stickers.get(i).getMapPointsDst()[0] - mDeleteWidth / 2, stickers.get(i).getMapPointsDst()[1] - mDeleteHeight / 2, null);
             }
         }
-
     }
 
-    /**
-     * 是否在控制点区域
-     * @param x
-     * @param y
-     * @return
-     */
     private boolean isInController(float x, float y) {
         int position = 4;
         float rx = stickers.get(focusStickerPosition).getMapPointsDst()[position];
@@ -123,15 +108,8 @@ public class StickerView extends View {
             return true;
         }
         return false;
-
     }
 
-    /**
-     * 是否在删除点区域
-     * @param x
-     * @param y
-     * @return
-     */
     private boolean isInDelete(float x, float y) {
         int position = 0;
         float rx = stickers.get(focusStickerPosition).getMapPointsDst()[position];
@@ -144,7 +122,6 @@ public class StickerView extends View {
             return true;
         }
         return false;
-
     }
 
     @Override
@@ -152,7 +129,6 @@ public class StickerView extends View {
         if (mViewRect == null) {
             mViewRect = new RectF(0f, 0f, getMeasuredWidth(), getMeasuredHeight());
         }
-
         if (stickers.size() <= 0 || focusStickerPosition < 0) {
             return true;
         }
@@ -209,12 +185,10 @@ public class StickerView extends View {
                             stickers.get(focusStickerPosition).setScaleSize(nowsc);
                         }
                     }
-
                     invalidate();
                     mLastPointX = x;
                     mLastPointY = y;
                     break;
-
                 }
 
                 if (mInMove == true) {
@@ -230,17 +204,11 @@ public class StickerView extends View {
                     }
                     break;
                 }
-
-
                 return true;
-
         }
         return true;
     }
 
-    /**
-     * 删除所有贴纸
-     */
     private void doDeleteSticker() {
         stickers.remove(focusStickerPosition);
         focusStickerPosition = stickers.size() - 1;
@@ -257,11 +225,9 @@ public class StickerView extends View {
         }
     }
 
-
     private float caculateLength(float x, float y) {
         return (float)Utils.lineSpace(x, y, stickers.get(focusStickerPosition).getMapPointsDst()[8], stickers.get(focusStickerPosition).getMapPointsDst()[9]);
     }
-
 
     private float rotation(MotionEvent event) {
         float originDegree = calculateDegree(mLastPointX, mLastPointY);
@@ -276,12 +242,6 @@ public class StickerView extends View {
         return (float) Math.toDegrees(radians);
     }
 
-    /**
-     * 是否点击在贴纸区域
-     * @param x
-     * @param y
-     * @return
-     */
     private boolean isFocusSticker(double x, double y) {
         for (int i = stickers.size() - 1; i >= 0; i--) {
             Sticker sticker = stickers.get(i);
@@ -294,12 +254,6 @@ public class StickerView extends View {
         return false;
     }
 
-    /**
-     * 判断点是否在指定区域内
-     * @param x
-     * @param y
-     * @return
-     */
     private boolean isInContent(double x, double y, Sticker currentSticker) {
         long startTime = System.currentTimeMillis();
         float[] pointsDst = currentSticker.getMapPointsDst();
@@ -339,25 +293,26 @@ public class StickerView extends View {
     }
 
     public void saveBitmapToFile() {
-//        int bgWidth = bgBitmap.getWidth();
-//        int bgHeight = bgBitmap.getHeight();
-//        Bitmap newbmp = Bitmap.createBitmap(bgWidth, bgHeight, Bitmap.Config.ARGB_8888);
-//        Canvas cv = new Canvas(newbmp);
-//        cv.drawBitmap(bgBitmap, 0, 0, null);
-//        cv.drawBitmap(stickers.get(focusStickerPosition).getBitmap(), stickers.get(focusStickerPosition).getmMatrix(), null);
+        int bgWidth = bgBitmap.getWidth();
+        int bgHeight = bgBitmap.getHeight();
+        Bitmap newbmp = Bitmap.createBitmap(bgWidth, bgHeight, Bitmap.Config.ARGB_8888);
+        Canvas cv = new Canvas(newbmp);
+        cv.drawBitmap(bgBitmap, 0, 0, null);
+        for (Sticker sticker: stickers) {
+            cv.drawBitmap(sticker.getBitmap(), sticker.getmMatrix(), null);
+        }
 //        cv.save(Canvas.ALL_SAVE_FLAG);
 //        cv.restore();
-//        bgBitmap = newbmp;
+        bgBitmap = newbmp;
+
+        BitmapSaver saver = new FileBitmapSaver();
+        saver.saveBitmap(newbmp);
 
         stickers.clear();
         focusStickerPosition = -1;
         invalidate();
     }
 
-    /**
-     * 设置焦点贴纸
-     * @param position
-     */
     private void setFocusSticker(int position) {
         int focusPosition = stickers.size() - 1;
         for (int i = 0; i < stickers.size(); i++) {
