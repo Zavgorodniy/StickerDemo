@@ -1,8 +1,5 @@
 package com.pepoc.stickerdemo;
 
-/**
- * Created by Yangchen on 2015/9/7.
- */
 public class PointD {
 
     private double x, y;

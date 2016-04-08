@@ -12,16 +12,10 @@ public class Sticker {
 
     private Bitmap bitmap;
 
-    /**
-     * 是否获取焦点
-     */
     private boolean focusable;
 
     private Matrix mMatrix;
 
-    /**
-     * 边框画笔
-     */
     private Paint mBorderPaint;
 
     private float[] mapPointsSrc;

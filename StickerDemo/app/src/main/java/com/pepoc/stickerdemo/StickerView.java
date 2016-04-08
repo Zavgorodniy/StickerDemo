@@ -9,20 +9,17 @@ import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Toast;
 
 import com.pepoc.stickerdemo.bitmapsaver.BitmapSaver;
 import com.pepoc.stickerdemo.bitmapsaver.FileBitmapSaver;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class StickerView extends View {
 
-    public static final float MAX_SCALE_SIZE = 5.0f;
+    public static final float MAX_SCALE_SIZE = 10.0f;
     public static final float MIN_SCALE_SIZE = 0.5f;
 
     private RectF mViewRect;
@@ -35,9 +32,14 @@ public class StickerView extends View {
 
     private boolean mInDelete = false;
 
-    private List<Sticker> stickers = new ArrayList<Sticker>();
+    private List<Sticker> stickers = new ArrayList<>();
 
     private int focusStickerPosition = -1;
+
+    //resizing variables(created by Nick)
+    private boolean firstTouchForResize;
+    private boolean beginResize;
+    float oldLength;
 
     public StickerView(Context context) {
         this(context, null);
@@ -104,10 +106,8 @@ public class StickerView extends View {
                 ry - mControllerHeight / 2,
                 rx + mControllerWidth / 2,
                 ry + mControllerHeight / 2);
-        if (rectF.contains(x, y)) {
-            return true;
-        }
-        return false;
+
+        return rectF.contains(x, y);
     }
 
     private boolean isInDelete(float x, float y) {
@@ -118,10 +118,7 @@ public class StickerView extends View {
                 ry - mDeleteHeight / 2,
                 rx + mDeleteWidth / 2,
                 ry + mDeleteHeight / 2);
-        if (rectF.contains(x, y)) {
-            return true;
-        }
-        return false;
+        return rectF.contains(x, y);
     }
 
     @Override
@@ -129,14 +126,17 @@ public class StickerView extends View {
         if (mViewRect == null) {
             mViewRect = new RectF(0f, 0f, getMeasuredWidth(), getMeasuredHeight());
         }
+
         if (stickers.size() <= 0 || focusStickerPosition < 0) {
             return true;
         }
+
         float x = event.getX();
         float y = event.getY();
-        switch (event.getAction()) {
+        switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 if (isInController(x, y)) {
+                    firstTouchForResize = false;
                     mInController = true;
                     mLastPointY = y;
                     mLastPointX = x;
@@ -144,15 +144,13 @@ public class StickerView extends View {
                     float nowLenght = caculateLength(stickers.get(focusStickerPosition).getMapPointsDst()[0], stickers.get(focusStickerPosition).getMapPointsDst()[1]);
                     float touchLenght = caculateLength(x, y);
                     deviation = touchLenght - nowLenght;
+                    Toast.makeText(getContext(), "resizing and rotation by controller button", Toast.LENGTH_SHORT).show();
                     break;
-                }
-
-                if (isInDelete(x, y)) {
+                } else if (isInDelete(x, y)) {
+                    firstTouchForResize = false;
                     mInDelete = true;
                     break;
-                }
-
-                if (isFocusSticker(x, y)) {
+                } else if (isFocusSticker(x, y)) {
                     mLastPointY = y;
                     mLastPointX = x;
                     mInMove = true;
@@ -160,8 +158,19 @@ public class StickerView extends View {
                 } else {
                     invalidate();
                 }
+                firstTouchForResize = true;
+                break;
+            case MotionEvent.ACTION_POINTER_DOWN:
+                if (firstTouchForResize) {
+                    beginResize = true;
+                    Toast.makeText(getContext(), "resizing on double touch", Toast.LENGTH_SHORT).show();
+                }
+                break;
+            case MotionEvent.ACTION_POINTER_UP:
+                beginResize = false;
                 break;
             case MotionEvent.ACTION_UP:
+                firstTouchForResize = false;
                 if (isInDelete(x, y) && mInDelete) {
                     doDeleteSticker();
                 }
@@ -185,13 +194,33 @@ public class StickerView extends View {
                             stickers.get(focusStickerPosition).setScaleSize(nowsc);
                         }
                     }
+
                     invalidate();
                     mLastPointX = x;
                     mLastPointY = y;
                     break;
                 }
 
-                if (mInMove == true) {
+                //resizing on double touch(created by Nick)
+                if (beginResize) {
+                    oldLength = caculateLength(stickers.get(focusStickerPosition).getMapPointsDst()[0], stickers.get(focusStickerPosition).getMapPointsDst()[1]);
+                    float touchLength = (float) Utils.lineSpace(event.getX(0), event.getY(0), event.getX(1), event.getY(1));
+                    if (Math.sqrt((oldLength - touchLength) * (oldLength - touchLength)) > 0.0f) {
+                        float scale = touchLength / oldLength;
+                        float nowsc = stickers.get(focusStickerPosition).getScaleSize() * scale;
+                        if (nowsc >= MIN_SCALE_SIZE && nowsc <= MAX_SCALE_SIZE) {
+                            stickers.get(focusStickerPosition).getmMatrix().postScale(scale, scale, stickers.get(focusStickerPosition).getMapPointsDst()[8], stickers.get(focusStickerPosition).getMapPointsDst()[9]);
+                            stickers.get(focusStickerPosition).setScaleSize(nowsc);
+                        }
+                    }
+
+                    mLastPointX = x;
+                    mLastPointY = y;
+                    invalidate();
+                    break;
+                }
+
+                if (mInMove) {
                     float cX = x - mLastPointX;
                     float cY = y - mLastPointY;
                     mInController = false;
@@ -204,6 +233,7 @@ public class StickerView extends View {
                     }
                     break;
                 }
+
                 return true;
         }
         return true;
@@ -218,11 +248,7 @@ public class StickerView extends View {
     private boolean canStickerMove(float cx, float cy) {
         float px = cx + stickers.get(focusStickerPosition).getMapPointsDst()[8];
         float py = cy + stickers.get(focusStickerPosition).getMapPointsDst()[9];
-        if (mViewRect.contains(px, py)) {
-            return true;
-        } else {
-            return false;
-        }
+        return mViewRect.contains(px, py);
     }
 
     private float caculateLength(float x, float y) {
@@ -255,7 +281,6 @@ public class StickerView extends View {
     }
 
     private boolean isInContent(double x, double y, Sticker currentSticker) {
-        long startTime = System.currentTimeMillis();
         float[] pointsDst = currentSticker.getMapPointsDst();
         PointD pointF_1 = Utils.getMidpointCoordinate(pointsDst[0], pointsDst[1], pointsDst[2], pointsDst[3]);
         double a1 = Utils.lineSpace(pointsDst[8], pointsDst[9], pointF_1.getX(), pointF_1.getY());
@@ -272,24 +297,13 @@ public class StickerView extends View {
         }
 
         PointD pointF_2 = Utils.getMidpointCoordinate(pointsDst[2], pointsDst[3], pointsDst[4], pointsDst[5]);
-        double a2 = a1;
-        double b2 = b1;
         double c2 = Utils.lineSpace(pointF_2.getX(), pointF_2.getY(), x, y);
-        double p2 = (a2 + b2 + c2) / 2;
-        double temp = p2 * (p2 - a2) * (p2 - b2) * (p2 - c2);
+        double p2 = (a1 + b1 + c2) / 2;
+        double temp = p2 * (p2 - a1) * (p2 - b1) * (p2 - c2);
         double s2 = Math.sqrt(temp);
-        double d2 = 2 * s2 / a2;
-        if (d2 > a1) {
-            return false;
-        }
-        long endTime = System.currentTimeMillis();
-        long time = endTime - startTime;
+        double d2 = 2 * s2 / a1;
 
-        if (d1 <= a1 && d2 <= a1) {
-            return true;
-        }
-
-        return false;
+        return (d2 > a1 && (d1 <= a1 && d2 <= a1));
     }
 
     public void saveBitmapToFile() {
@@ -328,4 +342,13 @@ public class StickerView extends View {
         focusStickerPosition = stickers.size() - 1;
     }
 
+//    private void doReversalHorizontal(){
+//        float[] floats = new float[] { -1f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 1f };
+//        Matrix tmpMatrix = new Matrix();
+//        tmpMatrix.setValues(floats);
+//        mBitmap = Bitmap.createBitmap(mBitmap, 0, 0, mBitmap.getWidth(),
+//                mBitmap.getHeight(), tmpMatrix, true);
+//        invalidate();
+//        mInReversalHorizontal = false;
+//    }
 }
